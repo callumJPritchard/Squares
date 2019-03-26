@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>squares</title>
+  <style type="text/css">
+  * {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+  </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+  <script type="text/javascript">
+   function autorun()
+   {
+     const canvas = document.getElementById("game");
+     const ctx = canvas.getContext('2d');
+     const gridSize = 6;
+     var drawAbleSize = Math.min(canvas.width, canvas.height)*0.8;
+     var start = -drawAbleSize/2;
+     var pitch = drawAbleSize/(gridSize-1)
+     var mousePos = {X:0, Y:0}
+     var startDrawPosition = {X:0, Y:0}
+     var initialDotIndex = -1;
+     var drawing = false;
+
+     var currentPlayer = 1;
+
+     var dots = []
+
+     var squareBoard = []
+     for(var i = 0; i < gridSize - 1; i++){
+       for(var j = 0; j < gridSize - 1; j++){
+         squareBoard.push({
+           I:i,
+           J:j,
+           walls: [false,false,false,false],
+           owner: -1
+         });
+       }
+     }
+
+     for(var i = 0; i < gridSize; i++){
+       for(var j = 0; j < gridSize; j++){
+         dots.push({
+           I: i,
+           J: j,
+           X: i,
+           Y: j,
+         });
+       }
+     }
+     function played(){
+       var found = false;
+       for(var i = 0; i < 25; i++){
+         var sq = squareBoard[i]
+         if(sq.owner <= 0){
+           //console.log(sq);
+           if(sq.walls[0] && sq.walls[1] && sq.walls[2] && sq.walls[3]){
+             //console.log("woo");
+             sq.owner = currentPlayer;
+             found = true;
+           }
+         }
+       }
+       if(!found){
+         if(currentPlayer == 1){
+           currentPlayer = 2;
+         }else{
+           currentPlayer = 1;
+         }
+       }
+       step();
+     }
+     function getSquaresFromDot(dotInd) {
+       var retIndices = [];
+       var i = dots[dotInd].I;
+       var j = dots[dotInd].J;
+
+       //the one to topLeft
+       if(j > 0 && i > 0){
+         retIndices.push((i-1)*5 +j - 1);
+       }else{
+         retIndices.push(-1)
+       }
+       //the one to topright
+       if(j >0 && i < 5){
+         retIndices.push(i*5 +j - 1);
+       }else{
+         retIndices.push(-1)
+       }
+       //the one to bottomLeft
+       if(j < 5 && i > 0){
+         retIndices.push((i-1)*5 +j);
+       }else{
+         retIndices.push(-1)
+       }
+       //the one to bottomright
+       if(j < 5 && i < 5){
+         retIndices.push(i*5 +j);
+       }else{
+         retIndices.push(-1)
+       }
+       return retIndices
+     }
+
+     function onResize(){
+       canvas.width = canvas.clientWidth;
+       canvas.height = canvas.clientHeight;
+       ctx.translate(canvas.width/2, canvas.height/2);
+       drawAbleSize = Math.min(canvas.width, canvas.height)*0.8;
+       start = -drawAbleSize/2;
+       pitch = drawAbleSize/(gridSize-1)
+       step();
+     }
+     window.addEventListener("resize", onResize);
+     onResize();
+
+     function whichIndClosest(){
+       var min = 999;
+       var ind = -1;
+       for(var d = 0; d < dots.length; d++){
+         var dist =  Math.sqrt(Math.pow(mousePos.X - dots[d].X,2) + Math.pow(mousePos.Y - dots[d].Y,2))
+         if(dist < min){
+           min = dist;
+           ind = d
+         }
+       }
+       if(min > pitch*0.15){
+         ind = -1;
+       }
+       return ind;
+     }
+
+     function mousedown(e){
+       mousemove(e);
+       //check if near a dot
+       var indc = whichIndClosest();
+       if(indc >= 0){
+         drawing = true;
+         initialDotIndex = indc;
+        startDrawPosition.X = dots[indc].X;
+        startDrawPosition.Y = dots[indc].Y;
+       }
+     }
+     function mouseup(e){
+       if(drawing){
+         var indc = whichIndClosest();
+         if(indc >= 0){
+           tryAndJoin(initialDotIndex, indc)
+         }
+       }
+       drawing = false;
+     }
+     function join(ind1, ind2){
+       //join the 2 dots
+       ind1Squares = getSquaresFromDot(ind1)
+       ind2Squares = getSquaresFromDot(ind2)
+       var valid = false
+       for(var i = 0; i < 6; i++){
+         for(var j = 0; j < 5; j++){
+           if(ind1Squares[i] == ind2Squares[j] && ind2Squares[j] >= 0){
+             //console.log((i+1)*(j+1) + "     " + ind2Squares[j])
+             var sq = ind1Squares[i]
+             switch ((i+1)*(j+1)) {
+               case 2:
+               if(!squareBoard[sq].walls[2]){
+                  squareBoard[sq].walls[2] = true;
+                  valid = true;
+                }
+                break;
+              case 3:
+              if(!squareBoard[sq].walls[1]){
+                 squareBoard[sq].walls[1] = true;
+                 valid = true;
+               }
+               break;
+              case 12:
+              if(!squareBoard[sq].walls[0]){
+                  squareBoard[sq].walls[0] = true;
+                  valid = true;
+              }
+              break;
+              case 8:
+              if(!squareBoard[sq].walls[3]){
+                 squareBoard[sq].walls[3] = true;
+                 valid = true;
+              }
+              break;
+             }
+           }
+         }
+       }
+       if(valid){
+         played();
+       }
+     }
+     function tryAndJoin(ind1, ind2){
+       if(ind1 == ind2){
+         return
+       }
+       if(dots[ind1].I == dots[ind2].I){
+         if(Math.abs(dots[ind1].J - dots[ind2].J) == 1){
+           join(ind1, ind2);
+         }
+       }
+       if(dots[ind1].J == dots[ind2].J){
+         if(Math.abs(dots[ind1].I - dots[ind2].I) == 1){
+           join(ind1, ind2);
+         }
+       }
+     }
+     function mousemove(e){
+       mousePos.X = e.clientX - canvas.width/2;
+       mousePos.Y = e.clientY - canvas.height/2;
+
+       step();
+     }
+     window.addEventListener("mousedown", mousedown);
+     //window.addEventListener("touchstart", mousedown);
+     window.addEventListener("mousemove", mousemove);
+     //window.addEventListener("touchmove", mousemove);
+     window.addEventListener("mouseup", mouseup);
+     //window.addEventListener("touchend", mouseup);
+
+     function drawCircleAt(X, Y, size){
+       ctx.fillStyle = "black";
+       ctx.lineWidth = pitch*0.02;
+       ctx.beginPath();
+       ctx.arc(X, Y, size, 0, 2 * Math.PI);
+       ctx.fill();
+     }
+     function drawSquareAt(X, Y, color){
+       var size = pitch*0.3;
+       ctx.fillStyle = color;
+       ctx.beginPath();
+       ctx.arc(X, Y, size, 0, 2 * Math.PI);
+       ctx.fill();
+     }
+     function drawDots(){
+       var p = 0
+       for(var i = 0; i < gridSize; i++){
+         for(var j = 0; j < gridSize; j++){
+           drawCircleAt(start + pitch*i, start + pitch*j, pitch*0.1)
+           dots[p].X = start + pitch*i;
+           dots[p].Y = start + pitch*j;
+           p++
+         }
+       }
+     }
+     function drawSquares(){
+       //draw the squares, and any walls
+       var p = 0
+       for(var i = 0; i < gridSize-1; i++){
+         for(var j = 0; j < gridSize-1; j++){
+           //draw the walls
+           ctx.strokeStyle = "black"
+           ctx.lineWidth = pitch*0.05;
+           ctx.beginPath();
+           ctx.moveTo(start + pitch*i, start + pitch*j);
+           if(squareBoard[p].walls[0]){
+             ctx.lineTo(start + pitch*(i+1), start + pitch*j);
+           }else{
+             ctx.moveTo(start + pitch*(i+1), start + pitch*j);
+           }
+           if(squareBoard[p].walls[1]){
+             ctx.lineTo(start + pitch*(i+1), start + pitch*(j+1));
+           }else{
+             ctx.moveTo(start + pitch*(i+1), start + pitch*(j+1));
+           }
+           if(squareBoard[p].walls[2]){
+             ctx.lineTo(start + pitch*i, start + pitch*(j+1));
+           }else{
+             ctx.moveTo(start + pitch*i, start + pitch*(j+1));
+           }
+           if(squareBoard[p].walls[3]){
+             ctx.lineTo(start + pitch*i, start + pitch*j);
+           }else{
+             ctx.moveTo(start + pitch*i, start + pitch*j);
+           }
+           ctx.stroke();
+
+           //draw the owner shape
+           if(squareBoard[p].owner == 1){
+             drawSquareAt(start + pitch*i + pitch*0.5, start + pitch*j + pitch*0.5, "green");
+            }
+            if(squareBoard[p].owner == 2){
+              drawSquareAt(start + pitch*i + pitch*0.5, start + pitch*j + pitch*0.5, "red");
+             }
+           p++
+         }
+       }
+     }
+     function step(){
+       window.requestAnimationFrame(stepp);
+     }
+     function stepp(){
+       if(currentPlayer == 1){
+         ctx.fillStyle = "#77ff99";
+         ctx.fillRect(-canvas.width/2,-canvas.height/2, canvas.width, canvas.height);
+       }else{
+         ctx.fillStyle = "#ff8484";
+         ctx.fillRect(-canvas.width/2,-canvas.height/2, canvas.width, canvas.height);
+       }
+       drawSquares();
+       if(drawing){
+         ctx.strokeStyle = "blue";
+         ctx.lineWidth = pitch*0.1;
+         ctx.beginPath();
+         ctx.moveTo(startDrawPosition.X,startDrawPosition.Y);
+         ctx.lineTo(mousePos.X,mousePos.Y);
+         ctx.stroke();
+       }
+       drawDots();
+     }
+     step();
+   }
+   if (document.addEventListener) document.addEventListener("DOMContentLoaded", autorun, false);
+   else if (document.attachEvent) document.attachEvent("onreadystatechange", autorun);
+   else window.onload = autorun;
+  </script>
+  </body>
+</html>
