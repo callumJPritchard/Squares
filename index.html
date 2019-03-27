@@ -31,7 +31,7 @@
 
      var currentPlayer = 1;
 
-     var dots = []
+     var dots = [];
 
      var squareBoard = []
      for(var i = 0; i < gridSize - 1; i++){
@@ -55,6 +55,35 @@
          });
        }
      }
+     function winAnimation(winn){
+       currentPlayer = winn;
+     }
+     function checkIfWon(){
+       var unowned = 0;
+       var p1owned = 0;
+       var p2owned = 0;
+       for(var i = 0; i < squareBoard.length; i++){
+         switch (squareBoard[i].owner) {
+           case -1:
+             unowned++
+             break;
+           case 1:
+             p1owned++;
+             break;
+           case 2:
+             p2owned++;
+             break;
+         }
+       }
+       if(p2owned + unowned< p1owned){
+         console.log("p1 won");
+         winAnimation(1);
+       }
+       if(p1owned + unowned < p2owned){
+         console.log("p2 won");
+         winAnimation(2);
+       }
+     }
      function played(){
        var found = false;
        for(var i = 0; i < 25; i++){
@@ -68,7 +97,10 @@
            }
          }
        }
-       if(!found){
+       if(found){
+         checkIfWon()
+       }else{
+         checkIfWon();
          if(currentPlayer == 1){
            currentPlayer = 2;
          }else{
@@ -156,7 +188,9 @@
          }
        }
        drawing = false;
+       step();
      }
+
      function join(ind1, ind2){
        //join the 2 dots
        ind1Squares = getSquaresFromDot(ind1)
@@ -221,12 +255,21 @@
 
        step();
      }
+     function touchdown(e){
+       mousedown(e.touches[0])
+     }
+     function touchmove(e){
+       mousemove(e.touches[0])
+     }
+     function touchup(e){
+       mouseup(e.touches[0])
+     }
      window.addEventListener("mousedown", mousedown);
-     //window.addEventListener("touchstart", mousedown);
+     window.addEventListener("touchstart", touchdown);
      window.addEventListener("mousemove", mousemove);
-     //window.addEventListener("touchmove", mousemove);
+     window.addEventListener("touchmove", touchmove);
      window.addEventListener("mouseup", mouseup);
-     //window.addEventListener("touchend", mouseup);
+     window.addEventListener("touchend", touchup);
 
      function drawCircleAt(X, Y, size){
        ctx.fillStyle = "black";
